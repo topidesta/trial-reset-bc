@@ -49,14 +49,25 @@ pernah menghapus apa pun kecuali Anda memintanya secara eksplisit.
 
 ```
 trial-reset-bc/
-├── bc4.py              # versi perbaikan (dipakai sekarang)
+├── bc4.py                    # versi perbaikan (dipakai sekarang)
+├── test_bc4.py               # uji otomatis (5 tes, key registry terisolasi)
+├── jalankan-dry-run.bat      # launcher klik-dua-kali (default dry-run)
+├── dist/
+│   ├── BC-RESET-fixed.exe          # build GUI (tanpa konsol) — klik-dua-kali
+│   ├── BC-RESET-fixed-console.exe  # build konsol — untuk CLI
+│   └── README.md                   # cara pakai + cara build ulang
 ├── legacy/
-│   ├── BC-RESET.exe    # binary asli rilis 2020 (PyInstaller, GUI, tanpa konsol)
-│   └── bc4.py          # dekompilasi + analisis kode asli (bahan rujukan)
+│   ├── BC-RESET.exe          # binary asli rilis 2020 (PyInstaller, GUI, tanpa konsol)
+│   └── bc4.py                # dekompilasi + analisis kode asli (bahan rujukan)
 └── README.md
 ```
 
 - **`bc4.py`** — versi yang dirawat. CLI, default aman (dry-run), punya backup.
+- **`dist/`** — hasil build PyInstaller (onefile, x86-64). EXE **tidak** di-commit
+  (lihat `.gitignore`); ada di folder ini supaya bisa langsung dipakai. Build ulang
+  dengan perintah di `dist/README.md`.
+- **`test_bc4.py`** — uji regresi yang memakai key terisolasi
+  `HKCU\Software\WorkBuddyTest`; tidak pernah menyentuh key asli Beyond Compare.
 - **`legacy/BC-RESET.exe`** — binary asli, 30 November 2020, ~7,66 MB, PE32+
   GUI x86-64. Berkas ini **disimpan hanya sebagai artefak sejarah** untuk
   membandingkan hasil dekompilasi. Jangan dijalankan; ia tidak punya mode
@@ -127,6 +138,8 @@ memperbaiki semuanya:
 Selalu mulai dari dry-run. Tanpa `--apply`, tidak ada satu pun value yang
 diubah.
 
+### Versi Python
+
 ```bash
 # 1) Lihat apa yang akan terjadi (default, aman)
 python bc4.py
@@ -140,6 +153,32 @@ python bc4.py --apply --backup cacheid-backup.json
 # Tanpa dialog GUI (mis. di sesi otomatis)
 python bc4.py --apply --no-gui
 ```
+
+### Versi EXE (tanpa perlu Python)
+
+```bat
+:: Lihat saja, tidak mengubah apa pun (default, AMAN)
+dist\BC-RESET-fixed-console.exe
+
+:: Backup lalu hapus sungguhan
+dist\BC-RESET-fixed-console.exe --backup cacheid-backup.json --apply
+
+:: Bantuan
+dist\BC-RESET-fixed-console.exe --help
+```
+
+`dist\BC-RESET-fixed.exe` sama saja tapi tanpa jendela konsol (cocok untuk
+klik-dua-kali; hasil tetap ditampilkan lewat dialog ringkasan). Atau klik-dua-kali
+`jalankan-dry-run.bat`.
+
+### Menjalankan uji
+
+```bash
+python test_bc4.py
+```
+
+Uji memakai key terisolasi `HKCU\Software\WorkBuddyTest` dan membersihkannya
+setelah selesai — key Beyond Compare asli tidak pernah disentuh.
 
 ### Opsi
 
@@ -206,6 +245,21 @@ dihapus" sebagai sukses yang buta.
 - Tidak ada otomatisasi penghapusan key — hanya value, sesuai perilaku alat
   aslinya.
 - Versi di `legacy/` **tidak dirawat** dan tidak akan diperbaiki.
+
+## 7a. Build ulang EXE
+
+Butuh `pyinstaller` (`pip install pyinstaller`). Dari akar repo:
+
+```bash
+pyinstaller --noconfirm --clean --onefile --noconsole --name BC-RESET-fixed bc4.py
+pyinstaller --noconfirm --clean --onefile --console  --name BC-RESET-fixed-console bc4.py
+```
+
+Hasilnya di `dist/`. Salah satu trik yang dipakai `bc4.py`: pada build
+`--noconsole`, `print()` tidak terlihat. Karena itu skrip memanggil
+`AttachConsole(-1)` — kalau dipanggil dari cmd/PowerShell ia "menempel" ke
+konsol pemanggil sehingga teks tetap muncul, tapi klik-dua-kali tidak
+memunculkan jendela hitam.
 
 ## 8. Lisensi & etika
 

@@ -242,6 +242,47 @@ def build_summary(result: dict) -> str:
     return "\n".join(lines)
 
 
+def _short_summary(result: dict, title: str) -> str:
+    """Ringkasan human-friendly untuk dialog GUI (tanpa baris error verbose)."""
+    if result["errors"]:
+        return title + "\n\n" + "\n".join(f"- {e}" for e in result["errors"])
+    if result["dry_run"]:
+        return (
+            f"{title}\n\n"
+            f"DRY-RUN - tidak ada yang diubah.\n"
+            f"{result['checked']} subkey diperiksa, "
+            f"{result['deleted']} value {VALUE_NAME} AKAN dihapus.\n\n"
+            f"Untuk benar-benar menghapus, jalankan:\n"
+            f"  BC-RESET-fixed.exe --apply\n"
+            f"(opsional tambahkan --backup data.json)"
+        )
+    return (
+        f"{title}\n\n"
+        f"{result['checked']} subkey diperiksa\n"
+        f"{result['deleted']} value {VALUE_NAME} dihapus\n"
+        f"{result['skipped']} dilewati"
+    )
+
+
+def _attach_console() -> bool:
+    """Bila dijalankan dari .exe --noconsole tapi ada parent console, sambungkan.
+
+    Trik standar Windows: AttachConsole(-1). Mengembalikan True bila berhasil.
+    """
+    try:
+        import ctypes
+
+        ATTACH_PARENT_PROCESS = -1
+        if ctypes.windll.kernel32.AttachConsole(ATTACH_PARENT_PROCESS):
+            # arahkan stdout/stderr ke console yang baru disambungkan
+            sys.stdout = open("CONOUT$", "w", buffering=1, encoding="utf-8", errors="replace")
+            sys.stderr = open("CONOUT$", "w", buffering=1, encoding="utf-8", errors="replace")
+            return True
+    except Exception:
+        pass
+    return False
+
+
 # ---------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------
@@ -267,6 +308,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    # .exe --noconsole: sambungkan ke console pemanggil bila ada, supaya CLI
+    # (mis. dari cmd/PowerShell) tetap menampilkan teks.
+    _attach_console()
+
     print("BC-RESET (versi perbaikan)")
     print("-" * 55)
 
@@ -276,8 +321,8 @@ def main(argv: list[str] | None = None) -> int:
     print(summary)
 
     if not args.no_gui:
-        title = "BC-RESET selesai (dry-run)" if result["dry_run"] else "BC-RESET selesai"
-        notify(title, summary)
+        title = "BC-RESET: DRY-RUN (tidak ada perubahan)" if result["dry_run"] else "BC-RESET: selesai"
+        notify(title, _short_summary(result, title))
 
     # Exit code: 0 normal, 1 bila ada error nyata (bukan sekadar "tidak ada subkey")
     return 1 if any("Key" not in e and "Tidak ada" not in e for e in result["errors"]) else 0

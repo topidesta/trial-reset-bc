@@ -1,0 +1,16 @@
+# Artefak build PyInstaller — bisa dibangun ulang, tidak perlu masuk Git
+build/
+dist/*.exe
+*.spec
+
+# Backup nilai registry yang dihasilkan saat menjalankan tool
+cacheid-backup.json
+backup-cacheid.json
+backup_test.json
+
+# Cache Python
+__pycache__/
+*.py[cod]
+
+# Runtime config asisten
+.workbuddy-ai/

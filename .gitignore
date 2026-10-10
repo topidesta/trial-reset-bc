@@ -1,6 +1,6 @@
 # Artefak build PyInstaller — bisa dibangun ulang, tidak perlu masuk Git
 build/
-dist/*.exe
+# dist/*.exe
 *.spec
 
 # Backup nilai registry yang dihasilkan saat menjalankan tool

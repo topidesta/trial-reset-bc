@@ -7,6 +7,10 @@ build/
 cacheid-backup.json
 backup-cacheid.json
 backup_test.json
+_backup_test.json
+
+# Log darurat bila dialog GUI gagal tampil
+bc-reset-notify-error.log
 
 # Cache Python
 __pycache__/

@@ -1,7 +1,7 @@
 # BC-RESET — hasil build
 
 Dua executable di sini dibangun dari `..\bc4.py` (PyInstaller 6.22.3,
-Python 3.13, satu file / onefile, x86-64).
+Python 3.14, satu file / onefile, x86-64).
 
 | File | Tipe | Kegunaan |
 |---|---|---|
@@ -37,9 +37,14 @@ Tanpa `--apply`, **tidak ada yang diubah** — hanya laporan.
 
 ## Verifikasi
 
-- `BC-RESET-fixed.exe` : 7.534.379 bytes, MD5 `ed050e2a90eb5d6009a7039b7a2f8e86`
-- `BC-RESET-fixed-console.exe` : 7.537.376 bytes, MD5 `5da40ac529e9e6e6e188a9c67e7a6132`
+- `BC-RESET-fixed.exe` : 11.760.590 bytes, MD5 `27365d23306598e568d1c5942a39f9a1`
+- `BC-RESET-fixed-console.exe` : 11.764.478 bytes, MD5 `a5e3a724890e3668c537eae8ac220504`
 - Keduanya terdeteksi sebagai `PE32+ executable (GUI/console) x86-64, for MS Windows`.
+
+> Ukuran naik dari ~7,5 MB menjadi ~11,8 MB karena **tkinter/tcl/tk ikut
+> terbundel**. Di build sebelumnya tkinter tidak ikut terbundel, jadi versi
+> GUI gagal menampilkan dialog **tanpa pesan apa pun** — itulah bug "build
+> tidak bisa dijalankan" lewat klik-dua-kali.
 
 Diuji: dry-run tidak mengubah registry; `--apply` menghapus semua subkey
 numerik pada key terisolasi; subkey non-numerik tidak tersentuh;
@@ -50,9 +55,33 @@ Uji regresi ada di `..\test_bc4.py` (5/5 lulus).
 
 ```bash
 pip install pyinstaller
-pyinstaller --noconfirm --clean --onefile --noconsole --name BC-RESET-fixed bc4.py
-pyinstaller --noconfirm --clean --onefile --console  --name BC-RESET-fixed-console bc4.py
+python build_exe.py          # dari akar repo
 ```
+
+`build_exe.py` membangun kedua EXE **dan** memverifikasi bahwa tkinter/tcl/tk
+benar-benar ikut terbundel; kalau tidak, build dianggap GAGAL. Ia juga
+menjalankan uji asap pada build konsol.
+
+Jangan membangun dengan perintah `pyinstaller` polos — lihat peringatan di bawah.
+
+> **Penting:** `--collect-all tkinter` (dan `--hidden-import tkinter`) wajib ada.
+> Tanpa itu PyInstaller menganggap tkinter tidak terpakai — karena `import
+> tkinter` baru dijalankan di dalam `notify()` saat dibutuhkan — sehingga tcl/tk
+> tidak ikut terbundel dan dialog GUI tidak akan muncul.
+>
+> Perintah manual (kalau tidak memakai `build_exe.py`):
+>
+> ```bash
+> pyinstaller --noconfirm --clean --onefile --noconsole \
+>   --hidden-import tkinter --hidden-import tkinter.messagebox --collect-all tkinter \
+>   --name BC-RESET-fixed bc4.py
+> pyinstaller --noconfirm --clean --onefile --console \
+>   --hidden-import tkinter --hidden-import tkinter.messagebox --collect-all tkinter \
+>   --name BC-RESET-fixed-console bc4.py
+> ```
+>
+> Setelah build manual, pastikan sendiri: cari string `tcl86`/`tk86` di dalam
+> EXE. Kalau tidak ada, versi GUI tidak akan menampilkan apa pun.
 
 EXE **tidak** di-commit ke Git (lihat `..\.gitignore`); build ulang dari sumber.
 

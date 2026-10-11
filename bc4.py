@@ -148,8 +148,17 @@ def backup_to_file(path: str, subkey: str, value, vtype) -> None:
     out.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
-def notify(title: str, message: str) -> None:
-    """Dialog GUI opsional; lewati diam-diam bila tkinter tidak tersedia."""
+def notify(title: str, message: str) -> bool:
+    """Dialog GUI opsional. Kembalikan True bila dialog benar-benar tampil.
+
+    PENTING: pada build `--noconsole`, `print()` tidak terlihat. Jadi bila
+    tkinter tidak ikut terbundel (mis. lupa `--hidden-import tkinter`), dulu
+    fungsi ini gagal *diam-diam* dan pengguna yang klik-dua-kali tidak melihat
+    apa pun sama sekali — seolah EXE rusak. Sekarang setiap kegagalan
+    dilaporkan: bila modulnya hilang, tampilkan dialog MessageBox lewat ctypes
+    (selalu tersedia di Windows, tanpa tkinter), dan bila itu pun gagal,
+    tulis pesan ke berkas `bc-reset-notify-error.log` di sebelah EXE.
+    """
     try:
         import tkinter
         from tkinter import messagebox
@@ -158,8 +167,41 @@ def notify(title: str, message: str) -> None:
         root.withdraw()
         messagebox.showinfo(title, message)
         root.destroy()
+        return True
+    except Exception as exc:
+        _fallback_notify(title, message, exc)
+        return False
+
+
+def _fallback_notify(title: str, message: str, exc: BaseException) -> None:
+    """Tampilkan pesan tanpa tkinter, supaya kegagalan tidak pernah senyap.
+
+    Urutan: MessageBox Win32 (ctypes) -> berkas log di sebelah EXE -> stderr.
+    """
+    note = (
+        f"{message}\n\n"
+        f"[catatan] Dialog tkinter tidak tersedia ({type(exc).__name__}: {exc}).\n"
+        f"Pesan ini ditampilkan lewat MessageBox darurat."
+    )
+    try:
+        import ctypes
+
+        MB_OK, MB_ICONWARNING = 0x0, 0x30
+        ctypes.windll.user32.MessageBoxW(None, note, title, MB_OK | MB_ICONWARNING)
+        return
     except Exception:
         pass
+
+    try:
+        base = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path.cwd()
+        log = base / "bc-reset-notify-error.log"
+        with log.open("a", encoding="utf-8") as fh:
+            fh.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')}  {title}\n{note}\n\n")
+        return
+    except Exception:
+        pass
+
+    print(note, file=sys.stderr)
 
 
 # ---------------------------------------------------------------------
@@ -322,7 +364,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.no_gui:
         title = "BC-RESET: DRY-RUN (tidak ada perubahan)" if result["dry_run"] else "BC-RESET: selesai"
-        notify(title, _short_summary(result, title))
+        if not notify(title, _short_summary(result, title)):
+            result["errors"].append(
+                "Dialog tkinter tidak tersedia; pesan darurat ditampilkan "
+                "(build .exe butuh --hidden-import tkinter)."
+            )
 
     # Exit code: 0 normal, 1 bila ada error nyata (bukan sekadar "tidak ada subkey")
     return 1 if any("Key" not in e and "Tidak ada" not in e for e in result["errors"]) else 0

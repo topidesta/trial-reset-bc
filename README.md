@@ -51,6 +51,7 @@ pernah menghapus apa pun kecuali Anda memintanya secara eksplisit.
 trial-reset-bc/
 ├── bc4.py                    # versi perbaikan (dipakai sekarang)
 ├── test_bc4.py               # uji otomatis (5 tes, key registry terisolasi)
+├── build_exe.py              # build ulang EXE + verifikasi tkinter
 ├── jalankan-dry-run.bat      # launcher klik-dua-kali (default dry-run)
 ├── dist/
 │   ├── BC-RESET-fixed.exe          # build GUI (tanpa konsol) — klik-dua-kali
@@ -248,12 +249,36 @@ dihapus" sebagai sukses yang buta.
 
 ## 7a. Build ulang EXE
 
-Butuh `pyinstaller` (`pip install pyinstaller`). Dari akar repo:
+Cara yang disarankan — satu perintah, sekaligus memverifikasi hasilnya:
 
 ```bash
-pyinstaller --noconfirm --clean --onefile --noconsole --name BC-RESET-fixed bc4.py
-pyinstaller --noconfirm --clean --onefile --console  --name BC-RESET-fixed-console bc4.py
+pip install pyinstaller
+python build_exe.py
 ```
+
+`build_exe.py` membangun kedua EXE, lalu memeriksa bahwa tkinter/tcl/tk
+benar-benar ikut terbundel dan menjalankan uji asap pada build konsol. Kalau
+tkinter tidak ada di dalam biner, build dianggap **GAGAL** — bukan "selesai".
+
+Perintah manual (kalau perlu):
+
+```bash
+pyinstaller --noconfirm --clean --onefile --noconsole \
+  --hidden-import tkinter --hidden-import tkinter.messagebox --collect-all tkinter \
+  --name BC-RESET-fixed bc4.py
+pyinstaller --noconfirm --clean --onefile --console \
+  --hidden-import tkinter --hidden-import tkinter.messagebox --collect-all tkinter \
+  --name BC-RESET-fixed-console bc4.py
+```
+
+`--collect-all tkinter` itu **bukan opsional**. `bc4.py` mengimpor `tkinter`
+di dalam fungsi `notify()`, bukan di tingkat modul, sehingga PyInstaller
+menyimpulkan modul itu tidak pernah dipakai dan tidak membundel tcl/tk. Akibatnya
+versi `--noconsole` selesai tanpa menampilkan dialog apa pun — klik-dua-kali
+tampak seperti "tidak terjadi apa-apa". Itu bug nyata yang pernah terjadi di
+repo ini. Kini `notify()` juga melaporkan kegagalannya lewat `MessageBoxW`
+(ctypes) sebagai jaring pengaman, jadi build yang salah tidak lagi gagal
+secara senyap.
 
 Hasilnya di `dist/`. Salah satu trik yang dipakai `bc4.py`: pada build
 `--noconsole`, `print()` tidak terlihat. Karena itu skrip memanggil

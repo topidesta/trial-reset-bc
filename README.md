@@ -53,10 +53,10 @@ trial-reset-bc/
 ├── test_bc4.py               # uji otomatis (5 tes, key registry terisolasi)
 ├── build_exe.py              # build ulang EXE + verifikasi tkinter
 ├── jalankan-dry-run.bat      # launcher klik-dua-kali (default dry-run)
-├── dist/
-│   ├── BC-RESET-fixed.exe          # build GUI (tanpa konsol) — klik-dua-kali
-│   ├── BC-RESET-fixed-console.exe  # build konsol — untuk CLI
-│   └── README.md                   # cara pakai + cara build ulang
+├── .github/workflows/
+│   └── release.yml           # build + rilis otomatis saat tag v* di-push
+├── dist/                     # hasil build (EXE tidak di-commit; lihat Releases)
+│   └── README.md             # cara pakai + cara build ulang
 ├── legacy/
 │   ├── BC-RESET.exe          # binary asli rilis 2020 (PyInstaller, GUI, tanpa konsol)
 │   └── bc4.py                # dekompilasi + analisis kode asli (bahan rujukan)
@@ -65,8 +65,10 @@ trial-reset-bc/
 
 - **`bc4.py`** — versi yang dirawat. CLI, default aman (dry-run), punya backup.
 - **`dist/`** — hasil build PyInstaller (onefile, x86-64). EXE **tidak** di-commit
-  (lihat `.gitignore`); ada di folder ini supaya bisa langsung dipakai. Build ulang
-  dengan perintah di `dist/README.md`.
+  (lihat `.gitignore`) karena tiap build ~12 MB. Untuk memakai tanpa build
+  sendiri, unduh dari halaman **Releases** repo ini.
+- **`build_exe.py`** — build ulang kedua EXE sekaligus, dengan verifikasi bahwa
+  tkinter benar-benar ikut terbundel. Lihat §7a.
 - **`test_bc4.py`** — uji regresi yang memakai key terisolasi
   `HKCU\Software\WorkBuddyTest`; tidak pernah menyentuh key asli Beyond Compare.
 - **`legacy/BC-RESET.exe`** — binary asli, 30 November 2020, ~7,66 MB, PE32+
@@ -285,6 +287,36 @@ Hasilnya di `dist/`. Salah satu trik yang dipakai `bc4.py`: pada build
 `AttachConsole(-1)` — kalau dipanggil dari cmd/PowerShell ia "menempel" ke
 konsol pemanggil sehingga teks tetap muncul, tapi klik-dua-kali tidak
 memunculkan jendela hitam.
+
+## 7b. Rilis otomatis (GitHub Actions)
+
+EXE **tidak** disimpan di Git — tiap build ~12 MB, dan menyimpannya membuat
+riwayat repo cepat membengkak. Sebagai gantinya, biner diproduksi oleh
+`.github/workflows/release.yml` dan dilampirkan ke **GitHub Release**.
+
+Untuk merilis versi baru, cukup push tag:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Workflow itu akan, di runner Windows:
+
+1. menyiapkan Python (versi dari python.org — **membawa tkinter**),
+2. memastikan tkinter benar-benar bisa diimpor (gagal cepat kalau tidak),
+3. menjalankan `test_bc4.py`,
+4. menjalankan `build_exe.py` (build **dan** verifikasi tkinter di dalam biner),
+5. membuat `dist/SHA256SUMS.txt`,
+6. melampirkan kedua EXE + checksum ke GitHub Release, dengan catatan rilis
+   otomatis.
+
+Workflow juga bisa dijalankan manual dari tab **Actions** (`workflow_dispatch`)
+untuk sekadar menguji build — dalam mode itu EXE hanya jadi artefak Actions dan
+tidak ada Release yang dibuat.
+
+Cara memakai unduhan: ambil salah satu EXE dari halaman **Releases**, lalu
+cocokkan hash-nya dengan `SHA256SUMS.txt` di rilis yang sama.
 
 ## 8. Lisensi & etika
 

@@ -1,7 +1,12 @@
 # Artefak build PyInstaller — bisa dibangun ulang, tidak perlu masuk Git
 build/
-# dist/*.exe
 *.spec
+
+# Biner EXE: TIDAK di-commit. Dibangun ulang oleh .github/workflows/release.yml
+# saat tag v* di-push, lalu dilampirkan ke GitHub Release. Ini menjaga riwayat
+# repo tetap ringan (tiap build ~24 MB).
+dist/*.exe
+dist/SHA256SUMS.txt
 
 # Backup nilai registry yang dihasilkan saat menjalankan tool
 cacheid-backup.json

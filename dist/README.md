@@ -1,7 +1,12 @@
 # BC-RESET — hasil build
 
-Dua executable di sini dibangun dari `..\bc4.py` (PyInstaller 6.22.3,
-Python 3.14, satu file / onefile, x86-64).
+Dua executable di sini dibangun dari `..\bc4.py` (PyInstaller, Python 3.12+,
+satu file / onefile, x86-64).
+
+> **Catatan:** folder `dist/` di repo **tidak** memuat `.exe`. Biner dibangun
+> ulang oleh GitHub Actions (`.github/workflows/release.yml`) saat tag `v*`
+> di-push, lalu dilampirkan ke GitHub Release. Unduh dari halaman Releases,
+> atau build sendiri dengan `python build_exe.py`.
 
 | File | Tipe | Kegunaan |
 |---|---|---|
@@ -37,14 +42,20 @@ Tanpa `--apply`, **tidak ada yang diubah** — hanya laporan.
 
 ## Verifikasi
 
-- `BC-RESET-fixed.exe` : 11.760.590 bytes, MD5 `27365d23306598e568d1c5942a39f9a1`
-- `BC-RESET-fixed-console.exe` : 11.764.478 bytes, MD5 `a5e3a724890e3668c537eae8ac220504`
-- Keduanya terdeteksi sebagai `PE32+ executable (GUI/console) x86-64, for MS Windows`.
+Build yang dipublikasikan lewat GitHub Release **tidak** dicatat di sini,
+karena hash-nya berubah tiap build. Yang berlaku adalah salah satu dari:
 
-> Ukuran naik dari ~7,5 MB menjadi ~11,8 MB karena **tkinter/tcl/tk ikut
-> terbundel**. Di build sebelumnya tkinter tidak ikut terbundel, jadi versi
-> GUI gagal menampilkan dialog **tanpa pesan apa pun** — itulah bug "build
-> tidak bisa dijalankan" lewat klik-dua-kali.
+- Unduhan dari GitHub Release → cocokkan dengan `SHA256SUMS.txt` yang
+  dilampirkan di rilis yang sama. GitHub Actions membuatnya otomatis.
+- Build lokal → hitung sendiri: `Get-FileHash dist\*.exe -Algorithm SHA256`.
+
+Keduanya terdeteksi sebagai `PE32+ executable (GUI/console) x86-64, for MS Windows`
+dan berukuran ~11,8 MB.
+
+> Ukuran itu (~11,8 MB, bukan ~7,5 MB) karena **tkinter/tcl/tk ikut terbundel**.
+> Di build lama tkinter tidak ikut, jadi versi GUI gagal menampilkan dialog
+> **tanpa pesan apa pun** — itulah bug "build tidak bisa dijalankan" lewat
+> klik-dua-kali. `build_exe.py` sekarang menolak menghasilkan build seperti itu.
 
 Diuji: dry-run tidak mengubah registry; `--apply` menghapus semua subkey
 numerik pada key terisolasi; subkey non-numerik tidak tersentuh;
@@ -83,7 +94,16 @@ Jangan membangun dengan perintah `pyinstaller` polos — lihat peringatan di baw
 > Setelah build manual, pastikan sendiri: cari string `tcl86`/`tk86` di dalam
 > EXE. Kalau tidak ada, versi GUI tidak akan menampilkan apa pun.
 
-EXE **tidak** di-commit ke Git (lihat `..\.gitignore`); build ulang dari sumber.
+EXE **tidak** di-commit ke Git (lihat `..\.gitignore`). Untuk merilis versi
+baru, cukup push tag:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+GitHub Actions akan menjalankan uji, membangun kedua EXE, dan melampirkannya
+(plus `SHA256SUMS.txt`) ke GitHub Release secara otomatis.
 
 ## Peringatan
 

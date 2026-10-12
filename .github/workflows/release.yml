@@ -1,0 +1,85 @@
+name: Release
+
+# Dipicu oleh tag versi, mis. `git tag v1.0.0 && git push origin v1.0.0`.
+# Bisa juga dijalankan manual dari tab Actions (workflow_dispatch) untuk
+# menguji build tanpa membuat rilis.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # perlu untuk membuat/ menyunting GitHub Release
+
+jobs:
+  build:
+    name: Build EXE (windows)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Siapkan Python
+        uses: actions/setup-python@v5
+        with:
+          # Runner windows-latest dari python.org SUDAH membawa tkinter.
+          # Itu wajib: versi GUI memakai tkinter untuk menampilkan dialog.
+          python-version: "3.12"
+
+      - name: Pastikan tkinter tersedia
+        shell: pwsh
+        run: |
+          python -c "import tkinter, sys; print('tkinter OK di', sys.executable)"
+
+      - name: Pasang dependensi
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller
+
+      - name: Jalankan uji
+        run: python test_bc4.py
+
+      - name: Build EXE (dengan verifikasi tkinter)
+        run: python build_exe.py
+
+      - name: Hitung checksum
+        shell: pwsh
+        run: |
+          Get-ChildItem dist\*.exe | ForEach-Object {
+            $h = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "{0}  {1}" -f $h, $_.Name
+          } | Set-Content dist\SHA256SUMS.txt
+          Get-Content dist\SHA256SUMS.txt
+
+      - name: Unggah artefak
+        uses: actions/upload-artifact@v4
+        with:
+          name: BC-RESET-exe
+          path: |
+            dist/*.exe
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: Buat GitHub Release
+        # Hanya saat dipicu tag — bukan saat workflow_dispatch.
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.exe
+            dist/SHA256SUMS.txt
+          generate_release_notes: true
+          body: |
+            BC-RESET — alat reset trial Beyond Compare (versi perbaikan).
+
+            **Peringatan:** ini melanggar Terms of Service Beyond Compare.
+            Lihat README untuk penjelasan lengkap dan risiko registry.
+
+            Unduh salah satu:
+            - `BC-RESET-fixed.exe` — versi GUI, klik-dua-kali. Default DRY-RUN.
+            - `BC-RESET-fixed-console.exe` — versi konsol untuk CLI.
+
+            Mulai dari dry-run. Tanpa flag `--apply`, tidak ada yang diubah.
+            Verifikasi unduhan dengan `SHA256SUMS.txt`.
